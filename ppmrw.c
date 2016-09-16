@@ -2,6 +2,11 @@
 #include <stdio.h>
 #include <string.h>
 
+// A struct to contain pixel information.
+typedef struct RGBPixel {
+	unsigned int r, g, b;
+} RGBPixel;
+
 // A simple main function to parse command line arguments and do some error checking.
 // Format translation will be handled by separate files that the main will call.
 int main(int argc, char *argv[]) {
@@ -48,8 +53,6 @@ int main(int argc, char *argv[]) {
 		comment_counter++;
 		char comment_line[100];
 		fgets(comment_line, 100, input);
-		//fprintf(output, "%c", next);
-		//fprintf(output, "%s", comment_line);
 		next = fgetc(input);
 	}
 
@@ -122,55 +125,123 @@ int main(int argc, char *argv[]) {
 	fprintf(stdout, "%s\n", header);
 
 	///////////////////////////////////////////
-	//======WRITING OUTPUT BEGINS HERE=======//
+	//====READING IMAGE DATA BEGINS HERE=====//
+
+	ungetc(next, input);
+
+	RGBPixel pixelmap_array[height_num][width_num];
+
+	if (strcmp("P3", magic_number) == 0) {
+		for (int row_count = 0; row_count < height_num; row_count++) {
+			for (int col_count = 0; col_count < width_num; col_count++) {
+
+				char red[4] = {'\0'};
+				char green[4] = {'\0'};
+				char blue[4] = {'\0'};
+
+				next = fgetc(input);
+
+				for (int i = 0; i < 3; i++) {
+					if (next == ' ' || next == '\n') {
+						break;
+					}
+
+					red[i] = next;
+					next = fgetc(input);
+				}
+
+				while (next == ' ' || next == '\n') {
+					next = fgetc(input);
+				}
+
+				for (int i = 0; i < 3; i++) {
+					if (next == ' ' || next == '\n') {
+						break;
+					}
+
+					green[i] = next;
+					next = fgetc(input);
+				}
+
+				while (next == ' ' || next == '\n') {
+					next = fgetc(input);
+				}
+
+				for (int i = 0; i < 3; i++) {
+					if (next == ' ' || next == '\n') {
+						break;
+					}
+
+					blue[i] = next;
+					next = fgetc(input);
+				}
+
+				while (next == ' ' || next == '\n') {
+					next = fgetc(input);
+				}
+
+				ungetc(next, input);
+
+				int red_val = atoi(red);
+				int green_val = atoi(green);
+				int blue_val = atoi(blue);
+
+				pixelmap_array[row_count][col_count].r = red_val;
+				pixelmap_array[row_count][col_count].g = green_val;
+				pixelmap_array[row_count][col_count].b = blue_val;
+			}
+		}
+	} else {
+		for (int row_count = 0; row_count < height_num; row_count++) {
+			for (int col_count = 0; col_count < width_num; col_count++) {
+				
+				int red_channel[1];
+				int green_channel[1];
+				int blue_channel[1];
+
+				fread(red_channel, 1, 1, input);
+				fread(green_channel, 1, 1, input);
+				fread(blue_channel, 1, 1, input);
+
+				pixelmap_array[row_count][col_count].r = red_channel[0];
+				pixelmap_array[row_count][col_count].g = green_channel[0];
+				pixelmap_array[row_count][col_count].b = blue_channel[0];
+			}
+		}
+	}
+
+	///////////////////////////////////////////
+	//=======WRITING DATA BEGINS HERE========//
 
 	FILE* output = fopen(argv[3], "w");
-	/*fprintf(output, "P%c\n", format_to);
-
-	fprintf(output, "%s", width);
-	fprintf(output, " ");
-
-	fprintf(output, "%s", height);
-	fprintf(output, "\n");
-
-	fprintf(output, "%s", channel_size);
-	fprintf(output, "\n", next);*/
 
 	fprintf(output, "%s", header);
 
-	if (strcmp("P3", magic_number) == 0) {
-		fprintf(stdout, "Input: P3, ");
-		// read P3
-	} else {
-		fprintf(stdout, "Input: P6, ");
-		// read P6
-	}
-
 	if (format_to == '3') {
-		fprintf(stdout, "Output: P3\n");
-		// write P3
-	} else {
-		fprintf(stdout, "Output: P6\n");
-		// write P4
-	}
+		for (int row_count = 0; row_count < height_num; row_count++) {
+			for (int col_count = 0; col_count < width_num; col_count++) {
+				
+				int red_channel = pixelmap_array[row_count][col_count].r;
+				int green_channel = pixelmap_array[row_count][col_count].g;
+				int blue_channel = pixelmap_array[row_count][col_count].b;
 
-	/*if (strcmp("P3", magic_number) == 0) {
-		if (format_to == '3') {
-			fprintf(stdout, "Input: P3, Output: P3\n");
-			// send to p3_to_p3
-		} else {
-			fprintf(stdout, "Input: P3, Output: P6\n");
-			// send to p3_to_p6
+				fprintf(output, "%i %i %i\n", red_channel, green_channel, blue_channel);
+			}
 		}
-	} else if (strcmp("P6", magic_number) == 0) {
-		if (format_to == '3') {
-			fprintf(stdout, "Input: P6, Output: P3\n");
-			// send to p6_to_p3
-		} else {
-			fprintf(stdout, "Input: P6, Output: P6\n");
-			// send to p6_to_p6
+	} else {
+		for (int row_count = 0; row_count < height_num; row_count++) {
+			for (int col_count = 0; col_count < width_num; col_count++) {
+				
+				int red_channel[1] = {pixelmap_array[row_count][col_count].r};
+				int green_channel[1] = {pixelmap_array[row_count][col_count].g};
+				int blue_channel[1] = {pixelmap_array[row_count][col_count].b};
+
+				fwrite(red_channel, 1, 1, output);
+				fwrite(green_channel, 1, 1, output);
+				fwrite(blue_channel, 1, 1, output);
+			}
 		}
-	}*/
+	}
 
 	fclose(input);
 	fclose(output);
